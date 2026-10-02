@@ -1,4 +1,4 @@
-# Worker image. Expects prebuilt binaries at dist/<os>/<arch>/{worker,factory}: scripts/worker-image.sh stages them
+# Worker image. Expects prebuilt binaries at dist/<os>/<arch>/{worker,tl}: scripts/worker-image.sh stages them
 # from a local release build, the release workflow from the release tarballs.
 FROM node:22-bookworm-slim
 ARG TARGETOS TARGETARCH
@@ -9,10 +9,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends git curl ca-cer
  && apt-get update && apt-get install -y --no-install-recommends gh \
  && rm -rf /var/lib/apt/lists/* \
  && npm install -g @anthropic-ai/claude-code
-COPY dist/${TARGETOS}/${TARGETARCH}/worker dist/${TARGETOS}/${TARGETARCH}/factory /usr/local/bin/
-COPY --chown=node:node skills/factory /home/node/.claude/skills/factory
+COPY dist/${TARGETOS}/${TARGETARCH}/worker dist/${TARGETOS}/${TARGETARCH}/tl /usr/local/bin/
+COPY --chown=node:node skills/tendless /home/node/.claude/skills/tendless
 RUN mkdir /workspace && chown node:node /workspace
 USER node
 WORKDIR /workspace
-ENV FACTORY_AGENT=claude-code FACTORY_WORKSPACE=/workspace
+ENV TENDLESS_AGENT=claude-code TENDLESS_WORKSPACE=/workspace
 ENTRYPOINT ["worker"]

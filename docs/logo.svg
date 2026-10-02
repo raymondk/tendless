@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="128" height="128">
+  <title>Tendless</title>
+  <rect width="64" height="64" rx="14" fill="#a8482b"/>
+  <path d="M10 52V36l12-8v8l12-8v8l12-8v24z" fill="#faf9f5"/>
+  <path d="M47 9a8 8 0 1 0 8 11 6.5 6.5 0 1 1-8-11z" fill="#faf9f5"/>
+</svg>

@@ -6,7 +6,7 @@
     "dev": "vite",
     "build": "vite build",
     "test": "vitest run",
-    "e2e": "cargo build -p orchestrator -p factory && playwright test"
+    "e2e": "cargo build -p orchestrator -p tl && playwright test"
   },
   "dependencies": {
     "@icp-sdk/auth": "^9.0.0",

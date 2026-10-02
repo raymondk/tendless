@@ -37,7 +37,7 @@ pub struct Orchestrator {
     /// age. Runs themselves are kept. Defaults to 7 days.
     #[serde(default = "default_log_retention", with = "humantime_serde")]
     pub log_retention: Duration,
-    /// SQLite file. Defaults to `factory.db` next to the config file.
+    /// SQLite file. Defaults to `tendless.db` next to the config file.
     pub database: Option<PathBuf>,
     /// How workers reach this orchestrator. Defaults to `http://<listen host or localhost>:<port>`.
     pub public_url: Option<String>,
@@ -70,7 +70,7 @@ impl Config {
     pub fn load(path: &Path) -> anyhow::Result<Config> {
         let mut config = Config::from_table(load_table(path)?).with_context(|| format!("in {}", path.display()))?;
         if config.orchestrator.database.is_none() {
-            config.orchestrator.database = Some(path.with_file_name("factory.db"));
+            config.orchestrator.database = Some(path.with_file_name("tendless.db"));
         }
         Ok(config)
     }
@@ -97,7 +97,7 @@ impl Config {
 }
 
 /// Reads `path`, then `<stem>.secrets.toml` beside it if present, whose values win. Tables merge key by key, so a
-/// committed `factory.toml` can hold everything but the secrets and the gitignored secrets file the rest.
+/// committed `tendless.toml` can hold everything but the secrets and the gitignored secrets file the rest.
 fn load_table(path: &Path) -> anyhow::Result<toml::Table> {
     let text = std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
     let mut table: toml::Table = toml::from_str(&text).with_context(|| format!("parsing {}", path.display()))?;
@@ -132,7 +132,7 @@ mod tests {
         }
     }
 
-    const EXAMPLE: &str = include_str!("../../../factory.example.toml");
+    const EXAMPLE: &str = include_str!("../../../tendless.example.toml");
 
     #[test]
     fn parses_example() {
@@ -151,12 +151,12 @@ mod tests {
     #[test]
     fn secrets_file_wins() {
         let dir = tempfile::tempdir().unwrap();
-        std::fs::write(dir.path().join("factory.toml"), EXAMPLE).unwrap();
-        std::fs::write(dir.path().join("factory.secrets.toml"), "[orchestrator]\ntoken = \"real\"\n").unwrap();
-        let c = Config::load(&dir.path().join("factory.toml")).unwrap();
+        std::fs::write(dir.path().join("tendless.toml"), EXAMPLE).unwrap();
+        std::fs::write(dir.path().join("tendless.secrets.toml"), "[orchestrator]\ntoken = \"real\"\n").unwrap();
+        let c = Config::load(&dir.path().join("tendless.toml")).unwrap();
         assert_eq!((c.orchestrator.token.as_str(), c.scheduler.max_workers), ("real", 4));
-        std::fs::write(dir.path().join("factory.secrets.toml"), "[orchestrator]\nbogus = 1\n").unwrap();
-        assert!(Config::load(&dir.path().join("factory.toml")).is_err());
+        std::fs::write(dir.path().join("tendless.secrets.toml"), "[orchestrator]\nbogus = 1\n").unwrap();
+        assert!(Config::load(&dir.path().join("tendless.toml")).is_err());
     }
 
     #[test]

@@ -64,27 +64,27 @@ async fn main() -> ExitCode {
 
 /// `Err` only for configuration problems, before the log ships; a failure while serving is logged and flushed.
 async fn run() -> anyhow::Result<ExitCode> {
-    let url = env("FACTORY_URL")?;
-    let id = env("FACTORY_WORKER_ID")?;
-    let token = std::env::var("FACTORY_WORKER_TOKEN").or_else(|_| env("FACTORY_TOKEN"))?;
-    let workspace = match std::env::var_os("FACTORY_WORKSPACE") {
+    let url = env("TENDLESS_URL")?;
+    let id = env("TENDLESS_WORKER_ID")?;
+    let token = std::env::var("TENDLESS_WORKER_TOKEN").or_else(|_| env("TENDLESS_TOKEN"))?;
+    let workspace = match std::env::var_os("TENDLESS_WORKSPACE") {
         Some(dir) => PathBuf::from(dir),
         None if PathBuf::from("/workspace").is_dir() => PathBuf::from("/workspace"),
-        None => std::env::temp_dir().join(format!("factory-{id}")),
+        None => std::env::temp_dir().join(format!("tendless-{id}")),
     };
-    let heartbeat_interval = duration("FACTORY_HEARTBEAT_INTERVAL", "10s")?;
-    let poll_interval = duration("FACTORY_POLL_INTERVAL", "5s")?;
-    let agent = std::env::var("FACTORY_AGENT").unwrap_or_else(|_| "command".into());
-    let model = std::env::var("FACTORY_MODEL").ok().filter(|m| !m.is_empty());
+    let heartbeat_interval = duration("TENDLESS_HEARTBEAT_INTERVAL", "10s")?;
+    let poll_interval = duration("TENDLESS_POLL_INTERVAL", "5s")?;
+    let agent = std::env::var("TENDLESS_AGENT").unwrap_or_else(|_| "command".into());
+    let model = std::env::var("TENDLESS_MODEL").ok().filter(|m| !m.is_empty());
     let shipping = Shipping {
-        interval: duration("FACTORY_LOG_INTERVAL", "1s")?,
-        batch: number("FACTORY_LOG_BATCH", 100)?,
-        max_line: number("FACTORY_LOG_MAX_LINE", 16 * 1024)?,
+        interval: duration("TENDLESS_LOG_INTERVAL", "1s")?,
+        batch: number("TENDLESS_LOG_BATCH", 100)?,
+        max_line: number("TENDLESS_LOG_MAX_LINE", 16 * 1024)?,
     };
     let command = match agent.as_str() {
-        "command" => Some(env("FACTORY_AGENT_COMMAND")?),
+        "command" => Some(env("TENDLESS_AGENT_COMMAND")?),
         "claude-code" => None,
-        other => bail!("unknown FACTORY_AGENT {other:?}"),
+        other => bail!("unknown TENDLESS_AGENT {other:?}"),
     };
     let log = Log::start(Client::new(&url, &token), id.clone(), shipping);
     let worker = Arc::new(Worker { client: Client::new(&url, &token), id, url, token, workspace, poll_interval, model, log });
@@ -92,7 +92,7 @@ async fn run() -> anyhow::Result<ExitCode> {
     let result = match command {
         Some(command) => worker.serve(&CommandAdapter { command }, heartbeat_interval).await,
         None => {
-            let bin = std::env::var("FACTORY_CLAUDE_BIN").unwrap_or_else(|_| "claude".into());
+            let bin = std::env::var("TENDLESS_CLAUDE_BIN").unwrap_or_else(|_| "claude".into());
             worker.serve(&ClaudeCodeAdapter { bin }, heartbeat_interval).await
         }
     };
@@ -240,19 +240,19 @@ impl Worker {
     }
 
     /// Creates the workspace and returns the agent's extra environment: orchestrator access, the project's repos
-    /// (space-separated in `FACTORY_REPOS`), a git identity per worker so commits never fail on a missing author, and,
+    /// (space-separated in `TENDLESS_REPOS`), a git identity per worker so commits never fail on a missing author, and,
     /// when `GIT_TOKEN` is set, git and gh credentials (a `.git-credentials` store in the workspace). Git settings go
     /// in via `GIT_CONFIG_*`, leaving the image untouched.
     fn prepare(&self, ticket: i64, repos: &[String]) -> anyhow::Result<Vec<(String, String)>> {
         std::fs::create_dir_all(&self.workspace).with_context(|| format!("creating {}", self.workspace.display()))?;
         let mut env = vec![
-            ("FACTORY_URL".to_string(), self.url.clone()),
-            ("FACTORY_TOKEN".to_string(), self.token.clone()),
-            ("FACTORY_WORKER_ID".to_string(), self.id.clone()),
-            ("FACTORY_TICKET".to_string(), ticket.to_string()),
-            ("FACTORY_REPOS".to_string(), repos.join(" ")),
+            ("TENDLESS_URL".to_string(), self.url.clone()),
+            ("TENDLESS_TOKEN".to_string(), self.token.clone()),
+            ("TENDLESS_WORKER_ID".to_string(), self.id.clone()),
+            ("TENDLESS_TICKET".to_string(), ticket.to_string()),
+            ("TENDLESS_REPOS".to_string(), repos.join(" ")),
         ];
-        let mut git = vec![("user.name", format!("factory worker {}", self.id)), ("user.email", format!("{}@factory.invalid", self.id))];
+        let mut git = vec![("user.name", format!("tendless worker {}", self.id)), ("user.email", format!("{}@tendless.invalid", self.id))];
         if let Ok(token) = std::env::var("GIT_TOKEN") {
             use std::os::unix::fs::PermissionsExt;
             let file = self.workspace.join(".git-credentials");

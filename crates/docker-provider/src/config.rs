@@ -60,7 +60,7 @@ impl Config {
 }
 
 /// Reads `path`, then `<stem>.secrets.toml` beside it if present, whose values win. Tables merge key by key, so a
-/// committed `factory.toml` can hold everything but the secrets and the gitignored secrets file the rest.
+/// committed `tendless.toml` can hold everything but the secrets and the gitignored secrets file the rest.
 fn load_table(path: &Path) -> anyhow::Result<toml::Table> {
     let text = std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
     let mut table: toml::Table = toml::from_str(&text).with_context(|| format!("parsing {}", path.display()))?;
@@ -97,7 +97,7 @@ mod tests {
         assert_eq!(c.provider.max_workers, 4);
         assert_eq!(c.provider.token, "change-me");
         let agent = &c.agents["claude-code"];
-        assert_eq!(agent.image, "ghcr.io/raymondk/software-factory/worker:latest");
+        assert_eq!(agent.image, "ghcr.io/raymondk/tendless/worker:latest");
         assert_eq!((agent.models.as_slice(), agent.default_model.as_str()), (["sonnet".to_string(), "opus".to_string()].as_slice(), "sonnet"));
         assert_eq!(c.worker_env["GIT_TOKEN"], "change-me");
     }

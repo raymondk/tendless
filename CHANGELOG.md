@@ -7,6 +7,12 @@ push the tag. The release workflow takes that version's section as the release n
 
 ## [Unreleased]
 
+### Changed
+
+- Renamed to Tendless. The CLI is `tl`; `FACTORY_*` environment variables are `TENDLESS_*`; `factory.toml` and
+  `factory.db` are `tendless.toml` and `tendless.db` (rename an existing database or set `database`); the worker image
+  is `ghcr.io/raymondk/tendless/worker`; container labels are `tendless.*`. Sign in again in the UI.
+
 ## [0.1.0] - 2026-09-25
 
 ### Added

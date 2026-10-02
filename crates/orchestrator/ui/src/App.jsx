@@ -33,8 +33,8 @@ export function App() {
   useEffect(() => {
     load();
     const out = () => setMe(null);
-    addEventListener("factory:unauthorized", out);
-    return () => removeEventListener("factory:unauthorized", out);
+    addEventListener("tendless:unauthorized", out);
+    return () => removeEventListener("tendless:unauthorized", out);
   }, [load]);
   const signOut = async () => {
     await api("/auth/logout", { method: "POST" }).catch(() => {});
@@ -96,7 +96,7 @@ function Factory({ me, onSignedOut }) {
 
   // The heading and the tab carry the project name.
   useEffect(() => { api("/config").then(c => { setProject(c.project.name); setVersion(c.version); }).catch(e => showError(e.message)); }, [showError]);
-  useEffect(() => { if (project) document.title = `${project} · Software Factory`; }, [project]);
+  useEffect(() => { if (project) document.title = `${project} · Tendless`; }, [project]);
 
   // Polls while the tab is visible and refreshes as soon as it becomes visible again.
   useEffect(() => {
@@ -140,7 +140,7 @@ function Factory({ me, onSignedOut }) {
   const owners = [...new Set([...users.map(u => u.principal), ...(tickets ?? []).map(t => t.owner).filter(Boolean)])];
   return (
     <Ctx.Provider value={{ refresh, select, showError, users, me }}>
-      <div id="top"><div><span class="tag">Software Factory{version && <span id="version" title="orchestrator version"> v{version}</span>}</span><h1 id="project">{project ?? " "}</h1></div><div class="row"><UserBar me={me} onSignedOut={onSignedOut} /><ConfigDialog providers={providers} /></div></div>
+      <div id="top"><div><span class="tag">Tendless{version && <span id="version" title="orchestrator version"> v{version}</span>}</span><h1 id="project">{project ?? " "}</h1></div><div class="row"><UserBar me={me} onSignedOut={onSignedOut} /><ConfigDialog providers={providers} /></div></div>
       <div id="error">{error && <><span>{error.message}</span><button onClick={() => setError(null)}>×</button></>}</div>
       <section>
         <CreateDialog agents={agents} unowned={!!me.admin}>

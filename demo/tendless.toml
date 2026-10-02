@@ -21,7 +21,7 @@ run_timeout = "30m"
 [prompts]
 ready = """
 You are working on ticket {{ticket.id}}: {{ticket.title}}.
-Read the ticket and its comments with the factory CLI.
+Read the ticket and its comments with the `tl` CLI.
 Move the ticket to in_progress, implement the change, open a pull request,
 add its URL to the ticket, and move the ticket to in_review.
 """

@@ -8,7 +8,7 @@ mod common;
 use common::TOKEN;
 
 async fn serve() -> (String, tempfile::TempDir) {
-    common::serve(include_str!("../../../factory.example.toml")).await
+    common::serve(include_str!("../../../tendless.example.toml")).await
 }
 
 /// What the browser does: sign the challenge string the way `@ldclabs/ic-auth`'s `signMessage` does.

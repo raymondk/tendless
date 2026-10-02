@@ -16,7 +16,7 @@
 # A Worker's Workspace, when one is run from the repository root
 /factory-workspace
 
-# Secrets merged over factory.toml / provider.toml
+# Secrets merged over tendless.toml / provider.toml
 *.secrets.toml
 
 # SQLite

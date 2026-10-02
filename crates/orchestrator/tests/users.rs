@@ -4,7 +4,7 @@ mod common;
 use common::{session, OWNER, TOKEN};
 
 async fn serve() -> (String, tempfile::TempDir) {
-    common::serve(include_str!("../../../factory.example.toml")).await
+    common::serve(include_str!("../../../tendless.example.toml")).await
 }
 
 fn status<T: std::fmt::Debug>(r: Result<T, Error>) -> u16 {

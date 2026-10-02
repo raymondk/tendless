@@ -4,15 +4,15 @@ use api_client::{ApproveUser, Breakdown, Client, Comment, CreateComment, CreateP
 use serde::Serialize;
 use clap::{Parser, Subcommand};
 
-/// CLI for the Software Factory orchestrator.
+/// CLI for the Tendless orchestrator.
 #[derive(Parser)]
 #[command(version = api_client::VERSION)]
 struct Cli {
     /// Orchestrator URL
-    #[arg(long, env = "FACTORY_URL", global = true, default_value = "http://localhost:8080")]
+    #[arg(long, env = "TENDLESS_URL", global = true, default_value = "http://localhost:8080")]
     url: String,
     /// Bearer token
-    #[arg(long, env = "FACTORY_TOKEN", global = true, hide_env_values = true)]
+    #[arg(long, env = "TENDLESS_TOKEN", global = true, hide_env_values = true)]
     token: Option<String>,
     #[command(subcommand)]
     command: Command,
@@ -85,7 +85,7 @@ enum UserCommand {
 enum TokenCommand {
     /// List your tokens
     List,
-    /// Create a token; the token is printed once, for FACTORY_TOKEN
+    /// Create a token; the token is printed once, for TENDLESS_TOKEN
     Create {
         #[arg(long)]
         name: String,
@@ -249,7 +249,7 @@ enum TicketCommand {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
-    let token = cli.token.ok_or_else(|| anyhow::anyhow!("set FACTORY_TOKEN or pass --token"))?;
+    let token = cli.token.ok_or_else(|| anyhow::anyhow!("set TENDLESS_TOKEN or pass --token"))?;
     let client = Client::new(cli.url, token);
     match cli.command {
         Command::Ticket { command } => match command {

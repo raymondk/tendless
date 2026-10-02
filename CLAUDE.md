@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Software Factory: developers feed it work; it modifies tickets, makes pull requests, reviews, merges, releases, and potentially deploys. Built from separate components.
+Tendless: developers feed it work; it modifies tickets, makes pull requests, reviews, merges, releases, and potentially deploys. Built from separate components.
 
 Status: design in `SPEC.md`, broken into GitHub issues. Implementation in progress as a Cargo workspace under `crates/`.
 
@@ -13,5 +13,5 @@ Status: design in `SPEC.md`, broken into GitHub issues. Implementation in progre
 
 ### Issue tracker
 
-GitHub Issues on `raymondk/software-factory` via `gh-axi`. See `docs/agents/issue-tracker.md`.
+GitHub Issues on `raymondk/tendless` via `gh-axi`. See `docs/agents/issue-tracker.md`.
 

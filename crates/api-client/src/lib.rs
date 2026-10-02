@@ -4,7 +4,7 @@ use std::time::Duration;
 use serde::{Deserialize, Deserializer, Serialize};
 
 /// This build's version: the crate version, plus `+<short commit>` off a tag or with local changes (see build.rs).
-pub const VERSION: &str = env!("FACTORY_VERSION");
+pub const VERSION: &str = env!("TENDLESS_VERSION");
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Ticket {

@@ -14,7 +14,7 @@ if [ "$agent" != command ] && { [ -z "${GIT_TOKEN:-}" ] || [ -z "${CLAUDE_CODE_O
   exit 1
 fi
 
-cargo build --release -p orchestrator -p docker-provider -p factory
+cargo build --release -p orchestrator -p docker-provider -p tl
 scripts/worker-image.sh
 export PATH=$PWD/target/release:$PATH
 
@@ -23,43 +23,43 @@ echo "Configs and logs in $tmp"
 if [ "$agent" = command ]; then
   sleep=${DEMO_SLEEP:-${DEMO_KILL:+30}}
   sleep=${sleep:-5}
-  sed -e 's/^heartbeat_timeout = .*/heartbeat_timeout = "10s"/' -e '/^\[agents/,$d' demo/factory.toml > "$tmp/factory.toml"
-  cat >> "$tmp/factory.toml" <<TOML
+  sed -e 's/^heartbeat_timeout = .*/heartbeat_timeout = "10s"/' -e '/^\[agents/,$d' demo/tendless.toml > "$tmp/tendless.toml"
+  cat >> "$tmp/tendless.toml" <<TOML
 [agents.command]
 run_timeout = "30m"
 
 [prompts]
 ready = '''
 set -e
-factory ticket edit {{ticket.id}} --state in_progress > /dev/null
+tl ticket edit {{ticket.id}} --state in_progress > /dev/null
 echo "working on #{{ticket.id}} for ${sleep}s"
 sleep $sleep
-factory ticket comment {{ticket.id}} --body "Stand-in agent: implemented {{ticket.id}}" > /dev/null
-factory ticket edit {{ticket.id}} --add-link https://github.com/example/repo/pull/1 > /dev/null
-factory ticket edit {{ticket.id}} --state in_review > /dev/null
+tl ticket comment {{ticket.id}} --body "Stand-in agent: implemented {{ticket.id}}" > /dev/null
+tl ticket edit {{ticket.id}} --add-link https://github.com/example/repo/pull/1 > /dev/null
+tl ticket edit {{ticket.id}} --state in_review > /dev/null
 echo '{"tokens_in":1200,"tokens_out":300,"cost":0.0123}'
 '''
 in_progress = '''
 set -e
-factory ticket comment {{ticket.id}} --body "resumed" > /dev/null
-factory ticket edit {{ticket.id}} --state in_review > /dev/null
+tl ticket comment {{ticket.id}} --body "resumed" > /dev/null
+tl ticket edit {{ticket.id}} --state in_review > /dev/null
 echo '{"tokens_in":100,"tokens_out":20,"cost":0.001}'
 '''
 TOML
   sed '/^\[agents/,$d' demo/provider.toml > "$tmp/provider.toml"
   cat >> "$tmp/provider.toml" <<'TOML'
 [agents.command]
-image = "software-factory/worker:latest"
+image = "tendless/worker:latest"
 models = ["sh"]
 default_model = "sh"
 
 [worker_env]
-FACTORY_AGENT_COMMAND = "/bin/sh"
-FACTORY_HEARTBEAT_INTERVAL = "2s"
-FACTORY_POLL_INTERVAL = "2s"
+TENDLESS_AGENT_COMMAND = "/bin/sh"
+TENDLESS_HEARTBEAT_INTERVAL = "2s"
+TENDLESS_POLL_INTERVAL = "2s"
 TOML
 else
-  cp demo/factory.toml "$tmp/factory.toml"
+  cp demo/tendless.toml "$tmp/tendless.toml"
   cp demo/provider.toml "$tmp/provider.toml"
   printf '[worker_env]\nGIT_TOKEN = "%s"\nCLAUDE_CODE_OAUTH_TOKEN = "%s"\n' "$GIT_TOKEN" "$CLAUDE_CODE_OAUTH_TOKEN" > "$tmp/provider.secrets.toml"
 fi
@@ -67,45 +67,45 @@ fi
 cleanup() {
   echo "Stopping orchestrator, provider, and worker containers"
   kill "$orch" "$prov" 2> /dev/null || true
-  containers=$(docker ps -aq --filter label=software-factory.worker_id)
+  containers=$(docker ps -aq --filter label=tendless.worker_id)
   [ -z "$containers" ] || docker rm -f "$containers" > /dev/null
   echo "Logs: $tmp/orchestrator.log $tmp/provider.log"
 }
 docker-provider "$tmp/provider.toml" > "$tmp/provider.log" 2>&1 &
 prov=$!
-orchestrator "$tmp/factory.toml" > "$tmp/orchestrator.log" 2>&1 &
+orchestrator "$tmp/tendless.toml" > "$tmp/orchestrator.log" 2>&1 &
 orch=$!
 trap cleanup EXIT
-export FACTORY_URL=http://localhost:8080
-FACTORY_TOKEN=$(sed -n 's/^token = "\(.*\)"/\1/p' "$tmp/factory.toml" | head -1)
-export FACTORY_TOKEN
-for _ in $(seq 50); do factory ticket list > /dev/null 2>&1 && break; sleep 0.2; done
-factory ticket list > /dev/null
+export TENDLESS_URL=http://localhost:8080
+TENDLESS_TOKEN=$(sed -n 's/^token = "\(.*\)"/\1/p' "$tmp/tendless.toml" | head -1)
+export TENDLESS_TOKEN
+for _ in $(seq 50); do tl ticket list > /dev/null 2>&1 && break; sleep 0.2; done
+tl ticket list > /dev/null
 
 # Providers belong to developers: sign a demo developer in (approved user, personal token straight into the
 # database, as the UI login would) and add the Docker provider as them. The rest of the demo runs as that developer.
-factory user approve demo-principal --name Demo > /dev/null
+tl user approve demo-principal --name Demo > /dev/null
 demo_token=demo-user-token
-sqlite3 "$tmp/factory.db" "INSERT INTO personal_tokens (token_hash, principal, name, created_at) \
+sqlite3 "$tmp/tendless.db" "INSERT INTO personal_tokens (token_hash, principal, name, created_at) \
   VALUES ('$(printf %s "$demo_token" | sha256sum | cut -d' ' -f1)', 'demo-principal', 'demo', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
-export FACTORY_TOKEN=$demo_token
+export TENDLESS_TOKEN=$demo_token
 provider_token=$(sed -n 's/^token = "\(.*\)"/\1/p' "$tmp/provider.toml" | head -1)
-factory provider add local http://localhost:8081 "$provider_token" > /dev/null
+tl provider add local http://localhost:8081 "$provider_token" > /dev/null
 
-id=$(factory ticket create --title "$title" --description "$description" | sed -n 's/^  "id": \([0-9]*\),/\1/p')
-factory ticket edit "$id" --state ready > /dev/null
+id=$(tl ticket create --title "$title" --description "$description" | sed -n 's/^  "id": \([0-9]*\),/\1/p')
+tl ticket edit "$id" --state ready > /dev/null
 echo "Ticket #$id is ready; waiting for a worker"
 
 # Prints state, assignee, comment and link changes until the ticket leaves ready/in_progress.
 prev=""
 killed=
 while :; do
-  cur=$(factory ticket view "$id" | grep -E '^ +("(state|assignee|author|body)": |"https?://)')
+  cur=$(tl ticket view "$id" | grep -E '^ +("(state|assignee|author|body)": |"https?://)')
   diff <(printf '%s\n' "$prev") <(printf '%s\n' "$cur") | sed -n "s/^> /$(date +%T) /p" || true
   prev=$cur
   state=$(printf '%s\n' "$cur" | sed -n 's/^  "state": "\(.*\)",*/\1/p')
   if [ -n "${DEMO_KILL:-}" ] && [ -z "$killed" ] && [ "$state" = in_progress ]; then
-    killed=$(docker ps -q --filter label=software-factory.worker_id)
+    killed=$(docker ps -q --filter label=tendless.worker_id)
     docker rm -f $killed > /dev/null
     echo "$(date +%T) killed the worker container; waiting for the reaper and a new worker"
   fi
@@ -115,11 +115,11 @@ while :; do
   esac
 done
 
-echo; echo "Metrics:"; factory metrics
+echo; echo "Metrics:"; tl metrics
 echo; echo "Waiting for the scheduler to stop the worker"
 for _ in $(seq 60); do
-  [ -n "$(factory worker list | awk '$3 != "dead"')" ] || break
+  [ -n "$(tl worker list | awk '$3 != "dead"')" ] || break
   sleep 2
 done
-echo "Workers:"; factory worker list
-echo "Containers:"; docker ps -a --filter label=software-factory.worker_id --format '{{.ID}} {{.Status}}'
+echo "Workers:"; tl worker list
+echo "Containers:"; docker ps -a --filter label=tendless.worker_id --format '{{.ID}} {{.Status}}'

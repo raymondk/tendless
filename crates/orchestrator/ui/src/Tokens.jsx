@@ -27,10 +27,10 @@ export function TokensDialog() {
     <dialog id="tokens" ref={dialog} onClick={e => e.target === e.currentTarget && e.currentTarget.close()}>
       <Header kind="Account" title="Personal tokens" onClose={() => dialog.current.close()} />
       <div class="scroll" tabindex={-1} autofocus>
-        <p>Tokens authenticate the <code>factory</code> CLI as you. Each is shown once, when created.</p>
+        <p>Tokens authenticate the <code>tl</code> CLI as you. Each is shown once, when created.</p>
         {created && <div class="notice token-once">
           <div>Token <b>{created.name}</b>, copy it now:</div>
-          <pre>FACTORY_TOKEN={created.token}</pre>
+          <pre>TENDLESS_TOKEN={created.token}</pre>
         </div>}
         {error && <div class="error">{error}</div>}
         <form onSubmit={create} class="row">

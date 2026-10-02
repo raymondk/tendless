@@ -9,9 +9,9 @@ use tokio::process::Command;
 use crate::Running;
 
 /// Label carrying the worker id on every container this provider starts.
-pub const LABEL: &str = "software-factory.worker_id";
+pub const LABEL: &str = "tendless.worker_id";
 /// Label carrying the agent the container runs.
-pub const AGENT_LABEL: &str = "software-factory.agent";
+pub const AGENT_LABEL: &str = "tendless.agent";
 
 async fn output(mut cmd: Command) -> anyhow::Result<std::process::Output> {
     let args: Vec<String> = cmd.as_std().get_args().map(|a| a.to_string_lossy().into_owned()).collect();

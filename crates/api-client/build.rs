@@ -1,4 +1,4 @@
-// FACTORY_VERSION: the crate version, plus `+<short commit>` when the tree is not exactly at the tag v<version> or has
+// TENDLESS_VERSION: the crate version, plus `+<short commit>` when the tree is not exactly at the tag v<version> or has
 // local changes. No git (a build from a tarball) means the bare version.
 use std::process::Command;
 
@@ -20,5 +20,5 @@ fn main() {
         Some(sha) if !(tagged && clean) => format!("{version}+{sha}"),
         _ => version.to_string(),
     };
-    println!("cargo:rustc-env=FACTORY_VERSION={version}");
+    println!("cargo:rustc-env=TENDLESS_VERSION={version}");
 }

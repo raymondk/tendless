@@ -7,29 +7,29 @@ belongs to the developer who registers it: its workers act as that developer and
 ## Prerequisites
 
 - **Docker**, with the daemon reachable by the user who runs the provider (`docker ps` works without `sudo`).
-- **The `docker-provider` binary** from a [release](https://github.com/raymondk/software-factory/releases), or `cargo build --release -p docker-provider`.
+- **The `docker-provider` binary** from a [release](https://github.com/raymondk/tendless/releases), or `cargo build --release -p docker-provider`.
 - **Network, both ways.** The orchestrator must reach the provider's `listen` address. The workers must reach the
-  orchestrator at its `public_url` (`[orchestrator]` in `factory.toml`); `localhost` there works only when both run on
+  orchestrator at its `public_url` (`[orchestrator]` in `tendless.toml`); `localhost` there works only when both run on
   the same Docker host.
 - **A git token** with push access to the project's repos, and permission to open pull requests. The worker feeds it to
   `git` and `gh` as `GIT_TOKEN`.
 - **An agent credential.** For Claude Code, `CLAUDE_CODE_OAUTH_TOKEN`: run `claude setup-token` on a machine where you
   are signed in to Claude Code and copy the token it prints.
 - **An account on the orchestrator.** Sign in to the UI with Internet Identity; the admin approves you with
-  `factory user approve <principal> --name <name>` (the pending page shows the command). Only approved users can add providers.
+  `tl user approve <principal> --name <name>` (the pending page shows the command). Only approved users can add providers.
 
 ## Install
 
 Download the tarball for your architecture from the release, check it, and put the binary on the path:
 
-    tar -xzf software-factory-vX.Y.Z-x86_64-unknown-linux-gnu.tar.gz docker-provider
+    tar -xzf tendless-vX.Y.Z-x86_64-unknown-linux-gnu.tar.gz docker-provider
     sha256sum -c --ignore-missing SHA256SUMS
     install -m 0755 docker-provider ~/.local/bin/
 
 Pull the worker image of the same version. `worker` is the base image; `worker-icp` adds the ICP toolchain (Rust with
 `wasm32`, Motoko, mops, `icp-cli`) for canister projects:
 
-    docker pull ghcr.io/raymondk/software-factory/worker:vX.Y.Z        # or worker-icp:vX.Y.Z
+    docker pull ghcr.io/raymondk/tendless/worker:vX.Y.Z        # or worker-icp:vX.Y.Z
 
 Keep the provider, the image and the orchestrator on the same release: a worker that cannot decode the orchestrator's
 responses exits at once, and the Providers view shows each provider's and worker's version so a stale one stands out.
@@ -44,7 +44,7 @@ Copy `provider.example.toml` to `provider.toml`:
     token = "..."                # invent it (openssl rand -hex 32); you give it to the orchestrator when registering
 
     [agents.claude-code]
-    image = "ghcr.io/raymondk/software-factory/worker:vX.Y.Z"
+    image = "ghcr.io/raymondk/tendless/worker:vX.Y.Z"
     models = ["sonnet", "opus"]  # what tickets may ask for
     default_model = "sonnet"     # when a ticket sets none
 
@@ -55,7 +55,7 @@ The secrets go in `provider.secrets.toml` next to it, same layout, merged over i
     CLAUDE_CODE_OAUTH_TOKEN = "..."
 
 Everything under `worker_env` becomes environment in every worker container. `agents.<name>` must be an agent the
-orchestrator's `factory.toml` lists under `[agents]`, or it is never scheduled.
+orchestrator's `tendless.toml` lists under `[agents]`, or it is never scheduled.
 
 ## Run
 
@@ -71,7 +71,7 @@ models, and the running workers. `RUST_LOG=debug` adds every request and docker 
 To keep it running, a user unit (`~/.config/systemd/user/docker-provider.service`):
 
     [Service]
-    ExecStart=%h/.local/bin/docker-provider %h/factory/provider.toml
+    ExecStart=%h/.local/bin/docker-provider %h/tendless/provider.toml
     Restart=on-failure
 
     [Install]
@@ -85,7 +85,7 @@ provider restart: it finds its containers again by label.
 In the UI, open the cog at the top right and add a provider with a name, the URL the orchestrator should use
 (`http://<host>:8081`) and the token from `provider.toml`. Or, with a personal token from the Tokens modal:
 
-    FACTORY_URL=https://factory.example FACTORY_TOKEN=... factory provider add home http://<host>:8081 <provider token>
+    TENDLESS_URL=https://tendless.example TENDLESS_TOKEN=... tl provider add home http://<host>:8081 <provider token>
 
 The Providers view on the board lists every provider. Within a scheduler pass (`scheduler.interval`, default 10s) yours
 shows **reachable** with when it last answered, its version, `in use / capacity`, and the agents and models it
@@ -103,7 +103,7 @@ pane; the agent's output streams there. When the queue empties the scheduler sto
   cannot reach. Check `curl <url>/status` from the orchestrator's host.
 - **unreachable, `401`**: the token registered does not match `provider.token`. Edit it under the cog.
 - **worker starts, dies at once**: it cannot reach the orchestrator. Look at the worker's log in the Workers pane, or
-  `docker logs` the container; `FACTORY_URL` is the orchestrator's `public_url`, which must resolve from inside the
+  `docker logs` the container; `TENDLESS_URL` is the orchestrator's `public_url`, which must resolve from inside the
   container (`host.docker.internal`, not `localhost`).
 - **`docker run: Unable to find image`**: pull the image, or fix `agents.<name>.image`.
 - **`permission denied ... docker.sock`**: add the provider's user to the `docker` group and log in again.

@@ -149,12 +149,12 @@ async fn start_worker(
         return Err(ApiError::Conflict(format!("at capacity ({max} workers)")));
     }
     let mut env = state.config.worker_env.clone();
-    env.insert("FACTORY_URL".into(), req.orchestrator_url);
-    env.insert("FACTORY_TOKEN".into(), req.worker_token.clone());
-    env.insert("FACTORY_WORKER_ID".into(), req.worker_id.clone());
-    env.insert("FACTORY_WORKER_TOKEN".into(), req.worker_token);
-    env.insert("FACTORY_AGENT".into(), req.agent.clone());
-    env.insert("FACTORY_MODEL".into(), agent.default_model.clone());
+    env.insert("TENDLESS_URL".into(), req.orchestrator_url);
+    env.insert("TENDLESS_TOKEN".into(), req.worker_token.clone());
+    env.insert("TENDLESS_WORKER_ID".into(), req.worker_id.clone());
+    env.insert("TENDLESS_WORKER_TOKEN".into(), req.worker_token);
+    env.insert("TENDLESS_AGENT".into(), req.agent.clone());
+    env.insert("TENDLESS_MODEL".into(), agent.default_model.clone());
     let container_id = docker::run(&agent.image, &req.worker_id, &req.agent, &env).await?;
     info!(worker = %req.worker_id, agent = %req.agent, image = %agent.image, container = %container_id, in_use = in_use(&current) + 1, max, "started worker");
     workers.insert(req.worker_id.clone(), Running { container_id: container_id.clone(), agent: req.agent.clone() });

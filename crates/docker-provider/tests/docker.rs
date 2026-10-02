@@ -8,7 +8,7 @@ use reqwest::StatusCode;
 use serde_json::{json, Value};
 
 /// Built from alpine on first use; sleeps so containers stay running.
-const SLEEP_IMAGE: &str = "software-factory/test-sleep";
+const SLEEP_IMAGE: &str = "tendless/test-sleep";
 /// Exits immediately (plain `sh` with no stdin).
 const EXIT_IMAGE: &str = "alpine:3.20";
 
@@ -126,16 +126,16 @@ async fn start_sets_env_and_stop_removes() {
     assert_eq!(worker["worker_id"], *id);
     assert_eq!(worker["agent"], "claude-code");
     let cid = worker["container_id"].as_str().unwrap();
-    assert_eq!(docker(&["inspect", "--format", "{{index .Config.Labels \"software-factory.agent\"}}", cid]).unwrap(), "claude-code");
+    assert_eq!(docker(&["inspect", "--format", "{{index .Config.Labels \"tendless.agent\"}}", cid]).unwrap(), "claude-code");
 
     let env: Vec<String> = serde_json::from_str(&docker(&["inspect", "--format", "{{json .Config.Env}}", cid]).unwrap()).unwrap();
     for expected in [
-        "FACTORY_URL=http://orchestrator:8080",
-        "FACTORY_TOKEN=worker-secret",
-        &format!("FACTORY_WORKER_ID={id}"),
-        "FACTORY_WORKER_TOKEN=worker-secret",
-        "FACTORY_AGENT=claude-code",
-        "FACTORY_MODEL=sonnet",
+        "TENDLESS_URL=http://orchestrator:8080",
+        "TENDLESS_TOKEN=worker-secret",
+        &format!("TENDLESS_WORKER_ID={id}"),
+        "TENDLESS_WORKER_TOKEN=worker-secret",
+        "TENDLESS_AGENT=claude-code",
+        "TENDLESS_MODEL=sonnet",
         "GIT_TOKEN=git-secret",
     ] {
         assert!(env.iter().any(|e| e == expected), "missing {expected} in {env:?}");

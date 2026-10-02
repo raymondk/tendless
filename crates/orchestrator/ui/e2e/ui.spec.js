@@ -17,7 +17,7 @@ const freePort = () => new Promise(resolve => {
 // What the fake provider advertises: agents and models the UI can set on tickets. Capacity 0, so nothing is ever started.
 const STATUS = { capacity: 0, in_use: 0, workers: [], agents: { "claude-code": { models: ["sonnet", "opus"], default_model: "sonnet" }, codex: { models: ["o3"], default_model: "o3" } } };
 
-// Builds a temp config from factory.example.toml (database defaults to next to it), starts the orchestrator, registers a fake provider that only answers /status as the developer, kills it all after.
+// Builds a temp config from tendless.example.toml (database defaults to next to it), starts the orchestrator, registers a fake provider that only answers /status as the developer, kills it all after.
 const test = base.extend({
   server: [async ({}, use) => {
     const port = await freePort();
@@ -27,13 +27,13 @@ const test = base.extend({
     });
     await new Promise(r => provider.listen(0, "127.0.0.1", r));
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ui-tests-"));
-    const config = path.join(dir, "factory.toml");
-    fs.writeFileSync(config, fs.readFileSync(path.join(root, "factory.example.toml"), "utf8").replace('listen = "0.0.0.0:8080"', `listen = "127.0.0.1:${port}"`).replace('# interval = "10s"', 'interval = "1s"'));
+    const config = path.join(dir, "tendless.toml");
+    fs.writeFileSync(config, fs.readFileSync(path.join(root, "tendless.example.toml"), "utf8").replace('listen = "0.0.0.0:8080"', `listen = "127.0.0.1:${port}"`).replace('# interval = "10s"', 'interval = "1s"'));
     const proc = spawn(path.join(root, "target/debug/orchestrator"), [config], { stdio: ["ignore", "ignore", "inherit"] });
     // Signs `principal` in the way the login endpoint will, straight into the database: a users row (pending unless
     // already there) and a session. Returns the session token.
     const session = principal => {
-      const db = new DatabaseSync(path.join(dir, "factory.db"));
+      const db = new DatabaseSync(path.join(dir, "tendless.db"));
       db.exec("PRAGMA busy_timeout = 5000"); // the orchestrator writes too
       const token = `session-${principal}-${Date.now()}`;
       db.prepare("INSERT OR IGNORE INTO users (principal, status, created_at) VALUES (?, 'pending', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))").run(principal);
@@ -68,11 +68,11 @@ const test = base.extend({
   // Signed in as Dev: the session token sits in localStorage as the login flow leaves it. Internet Identity itself is
   // not driven here.
   page: async ({ page, server }, use) => {
-    await page.addInitScript(t => localStorage.setItem("factory.token", t), server.dev);
+    await page.addInitScript(t => localStorage.setItem("tendless.token", t), server.dev);
     await use(page);
   },
 });
-const signedInAs = (page, token) => page.addInitScript(t => localStorage.setItem("factory.token", t), token);
+const signedInAs = (page, token) => page.addInitScript(t => localStorage.setItem("tendless.token", t), token);
 
 const card = (page, id) => page.locator(`.card[data-id="${id}"]`);
 const create = (server, title) => server.api("/tickets", { method: "POST", body: { title } });
@@ -81,7 +81,7 @@ const ids = async (server, ...want) => (await server.api("/tickets")).map(t => t
 test("heads the board with the project name", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("#project")).toHaveText("my-project");
-  await expect(page).toHaveTitle("my-project · Software Factory");
+  await expect(page).toHaveTitle("my-project · Tendless");
 });
 
 test("creates a ticket from the dialog", async ({ page, server }) => {
@@ -387,7 +387,7 @@ test("shows the owner by name, filters by owner, and takes it over from the deta
 });
 
 test("without a session the sign-in screen shows and nothing else loads", async ({ page }) => {
-  await page.addInitScript(() => localStorage.removeItem("factory.token"));
+  await page.addInitScript(() => localStorage.removeItem("tendless.token"));
   const calls = [];
   await page.route("**/tickets", route => { calls.push(route.request().url()); route.continue(); });
   await page.goto("/");
@@ -401,7 +401,7 @@ test("an expired session drops back to the sign-in screen", async ({ page, serve
   await signedInAs(page, "no-such-session");
   await page.goto("/");
   await expect(page.locator("button:text-is('Sign in with Internet Identity')")).toBeVisible();
-  expect(await page.evaluate(() => localStorage.getItem("factory.token"))).toBe(null);
+  expect(await page.evaluate(() => localStorage.getItem("tendless.token"))).toBe(null);
   // A revoked session mid-use does the same.
   await signedInAs(page, server.dev);
   await page.goto("/");
@@ -415,7 +415,7 @@ test("a pending user waits with their principal until the admin approves", async
   await page.goto("/");
   const waiting = page.locator("main.login");
   await expect(waiting).toContainText("Waiting for approval");
-  await expect(waiting.locator("pre")).toHaveText('factory user approve newbie-principal --name "…"');
+  await expect(waiting.locator("pre")).toHaveText('tl user approve newbie-principal --name "…"');
   await expect(page.locator("#board")).toHaveCount(0);
   await server.api("/users/newbie-principal/approve", { method: "POST", body: { name: "Newbie" } });
   await expect(page.locator("#board")).toBeVisible({ timeout: 10000 });
@@ -431,8 +431,8 @@ test("the header names the user; tokens are created, shown once and revoked; log
   await page.fill("#tokens input[name=name]", "laptop");
   await page.click("#tokens button:text-is('Create token')");
   const once = dialog.locator(".token-once pre");
-  await expect(once).toContainText("FACTORY_TOKEN=");
-  const token = (await once.textContent()).replace("FACTORY_TOKEN=", "").trim();
+  await expect(once).toContainText("TENDLESS_TOKEN=");
+  const token = (await once.textContent()).replace("TENDLESS_TOKEN=", "").trim();
   expect((await server.api("/me", { token })).name).toBe("Dev");
   await expect(dialog.locator("tbody tr")).toHaveText([/laptop/]);
   expect(await dialog.locator("tbody").textContent()).not.toContain(token);
@@ -440,9 +440,9 @@ test("the header names the user; tokens are created, shown once and revoked; log
   await expect(dialog).toContainText("No tokens yet");
   await expect(server.api("/me", { token })).rejects.toThrow("401");
   await page.keyboard.press("Escape");
-  const session = await page.evaluate(() => localStorage.getItem("factory.token"));
+  const session = await page.evaluate(() => localStorage.getItem("tendless.token"));
   await page.click("#user button:text-is('Log out')");
   await expect(page.locator("button:text-is('Sign in with Internet Identity')")).toBeVisible();
-  expect(await page.evaluate(() => localStorage.getItem("factory.token"))).toBe(null);
+  expect(await page.evaluate(() => localStorage.getItem("tendless.token"))).toBe(null);
   await expect(server.api("/me", { token: session })).rejects.toThrow("401");
 });

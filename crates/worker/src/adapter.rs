@@ -161,7 +161,7 @@ mod tests {
     static SHIMS: std::sync::LazyLock<tempfile::TempDir> = std::sync::LazyLock::new(|| {
         let dir = tempfile::tempdir().unwrap();
         let scripts = [
-            ("ok", format!("printf '%s' \"$*\" > argv.txt\ncat > stdin.txt\nprintf '%s|%s' \"$FACTORY_TICKET\" \"$CLAUDE_CODE_OAUTH_TOKEN\" > env.txt\necho '{RESULT}'\n")),
+            ("ok", format!("printf '%s' \"$*\" > argv.txt\ncat > stdin.txt\nprintf '%s|%s' \"$TENDLESS_TICKET\" \"$CLAUDE_CODE_OAUTH_TOKEN\" > env.txt\necho '{RESULT}'\n")),
             ("bare", "echo '{\"type\":\"result\",\"result\":\"ok\"}'\nexit 1\n".to_string()),
             ("hang", "sleep 60 &\necho $! > child.pid\nwait\n".to_string()),
         ];
@@ -182,7 +182,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         // SAFETY: tests here run single-threaded per process; the value is only read by the spawned child.
         unsafe { std::env::set_var("CLAUDE_CODE_OAUTH_TOKEN", "oauth-1") };
-        let env = vec![("FACTORY_TICKET".to_string(), "7".to_string())];
+        let env = vec![("TENDLESS_TICKET".to_string(), "7".to_string())];
         let (outcome, usage) = shim("ok").run("do #7", Some("opus"), dir.path(), Duration::from_secs(10), &env, &Log::stderr()).await.unwrap();
         assert!(outcome.success && !outcome.timed_out);
         assert_eq!(std::fs::read_to_string(dir.path().join("argv.txt")).unwrap(), "-p --output-format stream-json --verbose --dangerously-skip-permissions --model opus");

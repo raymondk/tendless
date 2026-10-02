@@ -1,4 +1,6 @@
-# Software Factory
+<img src="docs/logo.svg" width="96" alt="">
+
+# Tendless
 
 Developers feed it tickets. Agents carry them through the delivery lifecycle: implementing, opening pull requests,
 and later reviewing, merging, releasing, and deploying. Design in `SPEC.md`.
@@ -19,16 +21,16 @@ and later reviewing, merging, releasing, and deploying. Design in `SPEC.md`.
   holds the credentials they need, so the orchestrator never sees them.
 - **Worker**: a runtime around an agent. Polls the orchestrator for a ticket, runs the agent with the prompt for the
   ticket's state, reports usage, and repeats until stopped.
-- **CLI**: `factory`, which wraps the REST API. Used by the agent inside a worker to read and update its ticket, and by
+- **CLI**: `tl`, which wraps the REST API. Used by the agent inside a worker to read and update its ticket, and by
   developers to feed the factory.
 
 ## Feeding it work
 
-A developer works with an agent locally, with the CLI available and the factory skill loaded (`skills/factory`). The
-agent creates the tickets as the conversation produces them, with `factory ticket create`, and the developer refines
+A developer works with an agent locally, with the CLI available and the Tendless skill loaded (`skills/tendless`). The
+agent creates the tickets as the conversation produces them, with `tl ticket create`, and the developer refines
 them, reorders them, and marks them `ready`:
 
-    factory ticket edit 12 --state ready
+    tl ticket edit 12 --state ready
 
 The factory picks up `ready` tickets in rank order. Comments left on a ticket are read by the agent working it, so
 that is how a developer redirects work in flight.
@@ -48,7 +50,7 @@ The scheduler then stops the worker.
 
 runs a shell stand-in for the agent and needs no credentials. `DEMO_KILL=1` kills the worker container mid-run to
 show the ticket staying `in_progress` and a fresh worker resuming it. For the real thing, edit `repos` in
-`demo/factory.toml`, export `GIT_TOKEN` and `CLAUDE_CODE_OAUTH_TOKEN`, and drop `DEMO_AGENT`.
+`demo/tendless.toml`, export `GIT_TOKEN` and `CLAUDE_CODE_OAUTH_TOKEN`, and drop `DEMO_AGENT`.
 
 The orchestrator and the provider log to stderr with timestamps and levels. `RUST_LOG` sets verbosity: `info` (the
 default) covers requests that change something, worker and run lifecycle, ticket state changes, and provider
@@ -61,9 +63,9 @@ start/stop; `RUST_LOG=debug` adds every request, heartbeats, polls, scheduler ti
 ## Releases
 
 Pushing a tag `vX.Y.Z` (matching `version` in `Cargo.toml`, with a section in `CHANGELOG.md`) runs `.github/workflows/release.yml`:
-binaries for linux x86_64 and aarch64 on a GitHub release, and the worker image at `ghcr.io/raymondk/software-factory/worker:vX.Y.Z`
+binaries for linux x86_64 and aarch64 on a GitHub release, and the worker image at `ghcr.io/raymondk/tendless/worker:vX.Y.Z`
 (also `latest`), and `worker-icp` on top of it with the ICP toolchain. The image copies the released binaries rather than building from source; `scripts/worker-image.sh` builds it locally,
-compiling `worker` and `factory` in a bookworm container so they match the image's glibc.
+compiling `worker` and `tl` in a bookworm container so they match the image's glibc.
 
 ## UI
 

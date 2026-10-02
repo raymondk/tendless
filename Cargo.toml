@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/orchestrator", "crates/api-client", "crates/factory", "crates/docker-provider", "crates/worker"]
+members = ["crates/orchestrator", "crates/api-client", "crates/tl", "crates/docker-provider", "crates/worker"]
 
 [workspace.package]
 version = "0.1.0"

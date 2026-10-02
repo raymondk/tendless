@@ -1,10 +1,10 @@
-# Software Factory: Specification
+# Tendless: Specification
 
 Draft.
 
 ## 1. Overview
 
-Software Factory takes tickets from a team of developers and has agents carry them through the delivery lifecycle: implementing, opening pull requests, and later reviewing, merging, releasing, and deploying.
+Tendless takes tickets from a team of developers and has agents carry them through the delivery lifecycle: implementing, opening pull requests, and later reviewing, merging, releasing, and deploying.
 
 It is made of three components:
 
@@ -19,7 +19,7 @@ Web UI / CLI ──▶ Orchestrator REST API ◀── Worker (polls for tickets
                        │
                        │ start / stop / status (REST)
                        ▼
-        Worker Providers (separate processes) ──▶ Worker container (agent + git + factory CLI)
+        Worker Providers (separate processes) ──▶ Worker container (agent + git + `tl` CLI)
 ```
 
 ## 2. Concepts
@@ -109,7 +109,7 @@ Ticket JSON lists each relation with the other ticket's id, title and state, as 
 
 ### 4.2 REST API
 
-All endpoints require a bearer token: the admin's `orchestrator.token`, a developer's session or personal token, or a worker's token issued at start. Developers are Internet Identity principals; one who signs in is `pending` until the admin approves them under a name (`factory user approve`), and may only call `GET /me` until then. Only token hashes are stored.
+All endpoints require a bearer token: the admin's `orchestrator.token`, a developer's session or personal token, or a worker's token issued at start. Developers are Internet Identity principals; one who signs in is `pending` until the admin approves them under a name (`tl user approve`), and may only call `GET /me` until then. Only token hashes are stored.
 
 Tickets:
 - `GET /tickets` with optional `state`, `assignee` and `owner` filters, ordered by rank
@@ -178,17 +178,17 @@ There is no retry cap. A ticket that keeps killing workers is caught by humans w
 
 Static HTML and JavaScript embedded in the orchestrator binary. Lists tickets in rank order with blocked ones marked, shows one ticket with comments, relations and runs, allows creating, editing, relating, reordering tickets, setting agent and model, and changing state, shows workers with their agent and provider, and metrics. A ticket's page lets the signed-in developer make themselves its owner unless a worker holds it. A Providers view on the board lists every developer's providers read-only with owner, URL, health (reachable or not, when it last answered), workers and the agents and models each advertises with the default marked, refreshed with the board's poll. The cog at the top right opens a modal with the running configuration, read-only, and the providers the caller manages: a developer adds their own with a URL and token, edits its URL and token, reveals its token behind an eye icon and removes it; the admin removes any. A run's log opens from the ticket at `#/tickets/{id}/runs/{run}` and a worker's at `#/workers/{id}`, both following live while open. When the UI knows the agent behind a run or a worker (Claude Code today), its log opens in a pretty view that renders every event as structure, with a toggle to the raw lines; lines that are not events, such as the worker's own output, stay raw in place. The mapping from agent to renderer lives in the UI.
 
-Auth: the page carries no token. A developer signs in with Internet Identity (4.2, Login); the UI keeps the session token in `localStorage` and sends it as a bearer header, and a 401 sends it back to the sign-in screen. A pending or revoked user sees a page with their principal and the `factory user approve` command, polling until approved. The header shows the user, a Tokens modal (personal tokens for the CLI, each shown once at creation, revocable) and logout.
+Auth: the page carries no token. A developer signs in with Internet Identity (4.2, Login); the UI keeps the session token in `localStorage` and sends it as a bearer header, and a 401 sends it back to the sign-in screen. A pending or revoked user sees a page with their principal and the `tl user approve` command, polling until approved. The header shows the user, a Tokens modal (personal tokens for the CLI, each shown once at creation, revocable) and logout.
 
 ### 4.6 CLI
 
-`factory` command that wraps the REST API with the same capabilities as the UI. Configured with the orchestrator URL and a token via environment. Intended to be run by an agent, both inside a worker and by a developer working with an agent locally. `factory ticket logs <id> [--run <n>] [-f]` and `factory worker logs <id> [-f]` print logs, `-f` following until the run ends or the worker dies. `factory provider add <name> <url> <token>`, `factory provider list` and `factory provider remove <id>` manage the caller's providers.
+`tl` command that wraps the REST API with the same capabilities as the UI. Configured with the orchestrator URL and a token via environment. Intended to be run by an agent, both inside a worker and by a developer working with an agent locally. `tl ticket logs <id> [--run <n>] [-f]` and `tl worker logs <id> [-f]` print logs, `-f` following until the run ends or the worker dies. `tl provider add <name> <url> <token>`, `tl provider list` and `tl provider remove <id>` manage the caller's providers.
 
 ### 4.7 Runs and logs
 
 A **run** is one hand-out of a ticket to a worker: opened by poll, ended by the worker's usage report or by the reaper. A ticket lists its runs. Runs carry the worker's agent and, once ended by a usage report, the model it ran with.
 
-A worker ships every line it prints and every line its agent prints to the orchestrator, tagged with the current run or with none (startup, polling, a crash before the first poll). Lines are raw text, truncated at 16 KiB, sent in batches every second or every 100 lines, whichever comes first, so a crash loses at most one batch. Interval, batch size and line limit are worker configuration (`FACTORY_LOG_INTERVAL`, `FACTORY_LOG_BATCH`, `FACTORY_LOG_MAX_LINE`).
+A worker ships every line it prints and every line its agent prints to the orchestrator, tagged with the current run or with none (startup, polling, a crash before the first poll). Lines are raw text, truncated at 16 KiB, sent in batches every second or every 100 lines, whichever comes first, so a crash loses at most one batch. Interval, batch size and line limit are worker configuration (`TENDLESS_LOG_INTERVAL`, `TENDLESS_LOG_BATCH`, `TENDLESS_LOG_MAX_LINE`).
 
 Retention: `orchestrator.log_retention` (default 7 days). Hourly, the orchestrator deletes a run's lines once the run ended that long ago, and run-less lines that old by their own timestamp. Run rows are kept, so a ticket still lists every run; only the text goes.
 
@@ -228,17 +228,17 @@ MVP implementation: a Docker provider binary that runs worker images on the loca
 run(prompt, model, workspace, timeout) -> Outcome { success, summary, links }, Usage { tokens_in, tokens_out, cost, model }
 ```
 
-The agent updates the ticket itself using the `factory` CLI, which is in the image and pre-configured with the worker's token. The adapter does not parse agent output to learn the result. It reads the ticket state afterwards.
+The agent updates the ticket itself using the `tl` CLI, which is in the image and pre-configured with the worker's token. The adapter does not parse agent output to learn the result. It reads the ticket state afterwards.
 
 MVP adapter: Claude Code CLI in non-interactive mode with `--model <model> --output-format stream-json --verbose`, one JSON event per line, usage from the final `result` event; authenticated with a Claude OAuth token rather than an API key. Later: Codex, Pi, others.
 
 ### 6.3 Image
 
-Contains the worker binary, the `factory` CLI, git, the GitHub CLI, the agent CLI, and the factory skill.
+Contains the worker binary, the `tl` CLI, git, the GitHub CLI, the agent CLI, and the Tendless skill.
 
-### 6.4 Factory skill
+### 6.4 Tendless skill
 
-A skill installed in the image, in the agent's skill location, that teaches the agent how to work with the orchestrator: read its ticket including comments, change state, add links, relate tickets, comment, create tickets, all through the `factory` CLI or the REST API directly. This is how human guidance left in comments reaches the agent.
+A skill installed in the image, in the agent's skill location, that teaches the agent how to work with the orchestrator: read its ticket including comments, change state, add links, relate tickets, comment, create tickets, all through the `tl` CLI or the REST API directly. This is how human guidance left in comments reaches the agent.
 
 ### 6.5 Forge
 
@@ -269,7 +269,7 @@ run_timeout = "1h"
 [prompts]
 ready = """
 You are working on ticket {{ticket.id}}: {{ticket.title}}.
-Read the ticket and its comments with the factory CLI.
+Read the ticket and its comments with the `tl` CLI.
 Move the ticket to in_progress, implement the change, open a pull request,
 add its URL to the ticket, and move the ticket to in_review.
 """
@@ -291,7 +291,7 @@ max_workers = 4
 token = "change-me"
 
 [agents.claude-code]
-image = "software-factory/worker:latest"
+image = "tendless/worker:latest"
 models = ["sonnet", "opus"]
 default_model = "sonnet"
 
@@ -300,8 +300,8 @@ GIT_TOKEN = "..."
 CLAUDE_CODE_OAUTH_TOKEN = "..."
 ```
 
-Secrets stay out of source control the same way for both: next to `factory.toml` or `provider.toml`, an optional
-`factory.secrets.toml` or `provider.secrets.toml` with the same layout is merged over it at load, table by table, and its
+Secrets stay out of source control the same way for both: next to `tendless.toml` or `provider.toml`, an optional
+`tendless.secrets.toml` or `provider.secrets.toml` with the same layout is merged over it at load, table by table, and its
 values win. The committed file keeps the non-secret keys (or placeholders); `*.secrets.toml` is gitignored.
 
 ## 8. Metrics
@@ -320,7 +320,7 @@ In:
 - Ticket relations: `depends_on` blocks scheduling, `related_to` is informational.
 - Worker with Claude Code adapter. One agent. Picks up `ready` and resumes `in_progress`. Opens a PR, moves to `in_review`. Loops until stopped.
 - Run timeout per agent.
-- Factory skill in the worker image.
+- Tendless skill in the worker image.
 - GitHub only.
 - Scheduler: one worker per available ticket, capped. Stops workers when no work is left.
 - Metrics: tokens and cost per ticket.
@@ -352,7 +352,7 @@ Out:
 
 - **Orchestrator**: Rust, Axum, SQLite via SQLx. Single binary serving API and UI.
 - **Docker provider**: Rust, Axum. Talks to the local Docker daemon.
-- **Worker**: Rust binary in a Docker image with the Claude Code CLI, git, the GitHub CLI, the `factory` CLI, and the factory skill.
+- **Worker**: Rust binary in a Docker image with the Claude Code CLI, git, the GitHub CLI, the `tl` CLI, and the Tendless skill.
 - **CLI**: Rust. Shares an API client crate with the worker.
 - **Web UI**: plain HTML and JavaScript, embedded in the orchestrator.
 - **Config**: TOML.

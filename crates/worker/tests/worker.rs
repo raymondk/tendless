@@ -31,7 +31,7 @@ in_progress = "Resume #{{ticket.id}}"
 const PRELUDE: &str = r#"#!/bin/sh
 set -e
 patch() {
-  curl -sf -X PATCH -H "Authorization: Bearer $FACTORY_TOKEN" -H 'content-type: application/json' -d "$1" "$FACTORY_URL/tickets/$FACTORY_TICKET" > /dev/null
+  curl -sf -X PATCH -H "Authorization: Bearer $TENDLESS_TOKEN" -H 'content-type: application/json' -d "$1" "$TENDLESS_URL/tickets/$TENDLESS_TICKET" > /dev/null
 }
 "#;
 
@@ -94,16 +94,16 @@ impl Fixture {
         std::fs::set_permissions(&agent, std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
         let workspace = self.dir.path().join(format!("ws-{}", w.id));
         let child = Command::new(env!("CARGO_BIN_EXE_worker"))
-            .env("FACTORY_URL", &self.url)
-            .env("FACTORY_WORKER_ID", &w.id)
-            .env("FACTORY_WORKER_TOKEN", &w.token)
-            .env("FACTORY_AGENT", "command")
-            .env("FACTORY_MODEL", "m-default")
-            .env("FACTORY_WORKSPACE", &workspace)
-            .env("FACTORY_AGENT_COMMAND", &agent)
-            .env("FACTORY_POLL_INTERVAL", "100ms")
-            .env("FACTORY_HEARTBEAT_INTERVAL", "300ms")
-            .env("FACTORY_LOG_INTERVAL", "100ms")
+            .env("TENDLESS_URL", &self.url)
+            .env("TENDLESS_WORKER_ID", &w.id)
+            .env("TENDLESS_WORKER_TOKEN", &w.token)
+            .env("TENDLESS_AGENT", "command")
+            .env("TENDLESS_MODEL", "m-default")
+            .env("TENDLESS_WORKSPACE", &workspace)
+            .env("TENDLESS_AGENT_COMMAND", &agent)
+            .env("TENDLESS_POLL_INTERVAL", "100ms")
+            .env("TENDLESS_HEARTBEAT_INTERVAL", "300ms")
+            .env("TENDLESS_LOG_INTERVAL", "100ms")
             .env("GIT_TOKEN", "t0k")
             .spawn()
             .unwrap();
@@ -159,7 +159,7 @@ async fn success_moves_on_and_reports_usage() {
             r#"cat > stdin.txt
 printf '%s' "$PROMPT" > prompt.txt
 printf '%s' "$GIT_CONFIG_COUNT $GIT_CONFIG_KEY_0=$GIT_CONFIG_VALUE_0 $GIT_CONFIG_KEY_1=$GIT_CONFIG_VALUE_1 $GIT_CONFIG_KEY_2=$GIT_CONFIG_VALUE_2" > git.txt
-printf '%s' "$FACTORY_REPOS" > repos.txt
+printf '%s' "$TENDLESS_REPOS" > repos.txt
 printf '%s' "$MODEL" > model.txt
 patch '{"state":"in_review"}'
 echo working
@@ -173,7 +173,7 @@ echo '{"tokens_in":100,"tokens_out":20,"cost":0.25}'
     // One run, ended by the usage report; the worker's and the agent's lines are shipped, run lines tagged with it.
     let t = f.wait_for(id, |t| t.runs.first().is_some_and(|r| r.ended_at.is_some())).await;
     assert_eq!((t.runs.len(), t.runs[0].worker_id.as_str(), t.runs[0].ticket_id), (1, wid.as_str(), id));
-    // No model on the ticket: the provider's default from FACTORY_MODEL reaches the agent and is recorded on the run.
+    // No model on the ticket: the provider's default from TENDLESS_MODEL reaches the agent and is recorded on the run.
     assert_eq!(t.runs[0].model.as_deref(), Some("m-default"));
     assert_eq!(std::fs::read_to_string(ws.join("model.txt")).unwrap(), "m-default");
     let run = t.runs[0].id;
@@ -199,7 +199,7 @@ echo '{"tokens_in":100,"tokens_out":20,"cost":0.25}'
     // A git identity per worker, then the credential store.
     assert_eq!(
         std::fs::read_to_string(ws.join("git.txt")).unwrap(),
-        format!("3 user.name=factory worker {wid} user.email={wid}@factory.invalid credential.helper=store --file={}", ws.join(".git-credentials").display())
+        format!("3 user.name=tendless worker {wid} user.email={wid}@tendless.invalid credential.helper=store --file={}", ws.join(".git-credentials").display())
     );
     assert_eq!(std::fs::read_to_string(ws.join(".git-credentials")).unwrap(), "https://x-access-token:t0k@github.com\n");
     assert_eq!(std::fs::read_to_string(ws.join("repos.txt")).unwrap(), "https://github.com/org/a.git");
@@ -240,7 +240,7 @@ async fn timeout_kills_agent_and_releases_ticket() {
     let (child, wid, ws) = f
         .worker(
             r#"if [ -e self.pid ]; then patch '{"state":"done"}'; exit 0; fi
-patch "{\"state\":\"in_progress\",\"assignee\":\"$FACTORY_WORKER_ID\"}"
+patch "{\"state\":\"in_progress\",\"assignee\":\"$TENDLESS_WORKER_ID\"}"
 sleep 60 &
 echo $! > child.pid
 echo $$ > self.pid
@@ -273,8 +273,8 @@ async fn timed_out_ticket_is_not_resumed_while_other_work_exists() {
     // Hangs on `slow`, finishes anything else; records the order tickets were run in.
     let (child, _, ws) = f
         .worker(&format!(
-            r#"echo $FACTORY_TICKET >> order.txt
-if [ "$FACTORY_TICKET" = {slow} ]; then sleep 60; fi
+            r#"echo $TENDLESS_TICKET >> order.txt
+if [ "$TENDLESS_TICKET" = {slow} ]; then sleep 60; fi
 patch '{{"state":"done"}}'
 "#
         ))
@@ -290,7 +290,7 @@ patch '{{"state":"done"}}'
 async fn left_in_progress_is_failed() {
     let f = Fixture::new().await;
     let id = f.ticket("lazy").await;
-    let (child, wid, _) = f.worker("patch \"{\\\"state\\\":\\\"in_progress\\\",\\\"assignee\\\":\\\"$FACTORY_WORKER_ID\\\"}\"\nexit 3\n").await;
+    let (child, wid, _) = f.worker("patch \"{\\\"state\\\":\\\"in_progress\\\",\\\"assignee\\\":\\\"$TENDLESS_WORKER_ID\\\"}\"\nexit 3\n").await;
     let t = f.wait_for(id, |t| t.state == "failed").await;
     assert_eq!(t.assignee, None);
     assert_eq!(t.comments.len(), 1);
@@ -352,11 +352,11 @@ async fn incompatible_response_is_fatal() {
     tokio::spawn(async move { axum::serve(listener, router).await.unwrap() });
     let mut child = Proc(
         Command::new(env!("CARGO_BIN_EXE_worker"))
-            .env("FACTORY_URL", &url)
-            .env("FACTORY_WORKER_ID", "w-00000000")
-            .env("FACTORY_WORKER_TOKEN", "t")
-            .env("FACTORY_AGENT_COMMAND", "true")
-            .env("FACTORY_LOG_INTERVAL", "100ms")
+            .env("TENDLESS_URL", &url)
+            .env("TENDLESS_WORKER_ID", "w-00000000")
+            .env("TENDLESS_WORKER_TOKEN", "t")
+            .env("TENDLESS_AGENT_COMMAND", "true")
+            .env("TENDLESS_LOG_INTERVAL", "100ms")
             .stderr(std::process::Stdio::piped())
             .spawn()
             .unwrap(),

@@ -24,7 +24,7 @@ export function Login({ onSignedIn }) {
   };
   return (
     <main class="login">
-      <h1>Software Factory</h1>
+      <h1>Tendless</h1>
       <p>Sign in to see the board. Developers are identified by their Internet Identity principal and approved by the admin.</p>
       {error && <div class="error">{error}</div>}
       <button class="primary" onClick={go}>Sign in with Internet Identity</button>
@@ -40,11 +40,11 @@ export function Pending({ me, onChange, onSignedOut }) {
   }, [me.status, onChange]);
   return (
     <main class="login">
-      <h1>Software Factory</h1>
+      <h1>Tendless</h1>
       {me.status === "pending"
         ? <p>Waiting for approval. Ask the admin to run:</p>
         : <p>This account was revoked. The admin can reinstate it with:</p>}
-      <pre>factory user approve {me.principal} --name "…"</pre>
+      <pre>tl user approve {me.principal} --name "…"</pre>
       <p class="principal">Your principal: <code>{me.principal}</code></p>
       <button onClick={onSignedOut}>Log out</button>
     </main>

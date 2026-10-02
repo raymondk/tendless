@@ -1,6 +1,6 @@
 # Worker image with the ICP toolchain: Rust (wasm32), Motoko (moc), mops, icp-cli.
 # Build: scripts/worker-icp-image.sh. BASE_IMAGE is the base worker image of the same release.
-ARG BASE_IMAGE=ghcr.io/raymondk/software-factory/worker:latest
+ARG BASE_IMAGE=ghcr.io/raymondk/tendless/worker:latest
 FROM ${BASE_IMAGE}
 
 ARG MOTOKO_VERSION=1.16.1

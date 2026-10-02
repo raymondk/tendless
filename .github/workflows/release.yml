@@ -1,4 +1,4 @@
-# A pushed tag vX.Y.Z releases the factory: binaries per target on a GitHub release, and the worker image on ghcr.io.
+# A pushed tag vX.Y.Z releases Tendless: binaries per target on a GitHub release, and the worker image on ghcr.io.
 name: Release
 on:
   push:
@@ -47,8 +47,8 @@ jobs:
           cache-dependency-path: crates/orchestrator/ui/package-lock.json
       - run: npm ci
         working-directory: crates/orchestrator/ui
-      - run: cargo build --release --locked -p orchestrator -p docker-provider -p factory -p worker
-      - run: tar -czf software-factory-v${{ needs.notes.outputs.version }}-${{ matrix.target }}.tar.gz -C target/release orchestrator docker-provider factory worker
+      - run: cargo build --release --locked -p orchestrator -p docker-provider -p tl -p worker
+      - run: tar -czf tendless-v${{ needs.notes.outputs.version }}-${{ matrix.target }}.tar.gz -C target/release orchestrator docker-provider tl worker
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.target }}
@@ -78,7 +78,7 @@ jobs:
       - run: |
           for pair in x86_64:amd64 aarch64:arm64; do
             mkdir -p "dist/linux/${pair#*:}"
-            tar -xzf "artifacts/software-factory-v${{ needs.notes.outputs.version }}-${pair%:*}-unknown-linux-gnu.tar.gz" -C "dist/linux/${pair#*:}" worker factory
+            tar -xzf "artifacts/tendless-v${{ needs.notes.outputs.version }}-${pair%:*}-unknown-linux-gnu.tar.gz" -C "dist/linux/${pair#*:}" worker tl
           done
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
